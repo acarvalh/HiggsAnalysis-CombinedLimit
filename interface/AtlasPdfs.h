@@ -619,3 +619,49 @@ private:
 
 
 #endif
+
+// --- Importing file HggBernstein
+/*****************************************************************************
+ * Authors:                                                                  *
+ *   Nicolas Berger (nicolas.berger@cern.ch)
+ *                                                                           *
+ *                                                                           *
+ * Redistribution and use in source and binary forms,                        *
+ * with or without modification, are permitted according to the terms        *
+ * listed in LICENSE (http://roofit.sourceforge.net/license.txt)             *
+ *****************************************************************************/
+#ifndef ROOT_HggBernstein
+#define ROOT_HggBernstein
+
+#include "RooAbsPdf.h"
+#include "RooRealProxy.h"
+#include "RooListProxy.h"
+
+class RooRealVar;
+class RooArgList ;
+
+class HggBernstein : public RooAbsPdf {
+ public:
+
+  HggBernstein() ;
+  HggBernstein(const char *name, const char *title,
+               RooAbsReal& _x, const RooArgList& _coefList, double xMin = 0, double xMax = -1) ;
+
+  HggBernstein(const HggBernstein& other, const char* name = 0);
+  virtual TObject* clone(const char* newname) const { return new HggBernstein(*this, newname); }
+  inline virtual ~HggBernstein() { }
+
+  Int_t getAnalyticalIntegral(RooArgSet& allVars, RooArgSet& analVars, const char* rangeName=0) const ;
+  Double_t analyticalIntegral(Int_t code, const char* rangeName=0) const ;
+
+ private:
+
+  RooRealProxy _x;
+  RooListProxy _coefList ;
+  double _xMin, _xMax;
+  
+  Double_t evaluate() const;
+
+  ClassDef(HggBernstein,1) // Bernstein polynomial PDF
+    };
+#endif

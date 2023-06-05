@@ -214,6 +214,7 @@
     <class name="TestProposal"  transient="true" />
 	<class name="RooAbsListContainer" />
 	<class name="RooTwoSidedCBShape" />
+	<class name="HggBernstein" />
     <class name="RooExpandedDataHist" />
 	<class name="RooExpandedHistPdf" />
   <class name="RooCheapProduct" />

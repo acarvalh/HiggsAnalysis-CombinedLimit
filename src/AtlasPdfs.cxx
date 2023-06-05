@@ -2312,3 +2312,115 @@ Double_t RooTwoSidedCBShape::powerLawIntegral(Double_t tmin, Double_t tmax, Doub
   if( useLog ) return a * TMath::Power(n/alpha, n) * ( log( b-tmin ) - log( b-tmax ) );
   return a/(1 - n)*( (b - tmin)/(TMath::Power(alpha/n*(b - tmin), n)) - (b - tmax)/(TMath::Power(alpha/n*(b - tmax), n)) );
 }
+
+// --- Importing file HggBernstein
+
+#include "RooFit.h"
+#include "Riostream.h"
+#include "Riostream.h"
+#include <math.h>
+#include "TMath.h"
+#include "RooAbsReal.h"
+#include "RooRealVar.h"
+#include "RooArgList.h"
+
+#include <iostream>
+using std::cout;
+using std::endl;
+
+ClassImp(HggBernstein)
+//_____________________________________________________________________________
+HggBernstein::HggBernstein() :_xMin(0), _xMax(1)
+{
+}
+
+
+//_____________________________________________________________________________
+HggBernstein::HggBernstein(const char* name, const char* title, 
+                           RooAbsReal& x, const RooArgList& coefList, double xMin, double xMax): 
+  RooAbsPdf(name, title),
+  _x("x", "Dependent", this, x),
+  _coefList("coefficients","List of coefficients",this),
+  _xMin(xMin < xMax ? xMin : _x.min()),
+  _xMax(xMin < xMax ? xMax : _x.max())  
+{
+  //cout << _xMin << " " << _xMax << " " << xMin << " " << xMax << " " << _x.min() << " " << _x.max() <<endl;
+  // Constructor
+  TIterator* coefIter = coefList.createIterator() ;
+  RooAbsArg* coef ;
+  while((coef = (RooAbsArg*)coefIter->Next())) {
+    if (!dynamic_cast<RooAbsReal*>(coef)) {
+      cout << "HggBernstein::ctor(" << GetName() << ") ERROR: coefficient " << coef->GetName() 
+           << " is not of type RooAbsReal" << endl ;
+      assert(0) ;
+    }
+    _coefList.add(*coef) ;
+  }
+  delete coefIter ;
+}
+
+
+
+//_____________________________________________________________________________
+HggBernstein::HggBernstein(const HggBernstein& other, const char* name) :
+  RooAbsPdf(other, name), 
+  _x("x", this, other._x), 
+  _coefList("coefList",this,other._coefList),
+  _xMin(other._xMin), _xMax(other._xMax)
+{
+}
+
+
+//_____________________________________________________________________________
+Double_t HggBernstein::evaluate() const 
+{
+  Int_t degree= _coefList.getSize()-1; // n+1 polys of degree n
+
+  Double_t temp=0, tempx = (_x-_xMin)/(_xMax-_xMin); // rescale to [0,1]
+
+  RooFIter iter = _coefList.fwdIterator() ;
+  for (int i=0; i<=degree; ++i){
+    temp += ((RooAbsReal*)iter.next())->getVal() *
+      TMath::Binomial(degree, i) * pow(tempx,i) * pow(1-tempx,degree-i);
+  }
+  return temp;
+
+}
+
+
+//_____________________________________________________________________________
+Int_t HggBernstein::getAnalyticalIntegral(RooArgSet& allVars, RooArgSet& analVars, const char* rangeName) const 
+{
+  // No analytical calculation available (yet) of integrals over subranges
+  if (rangeName && strlen(rangeName)) {
+    return 0 ;
+  }
+
+  if (matchArgs(allVars, analVars, _x)) return 1;
+  return 0;
+}
+
+
+//_____________________________________________________________________________
+Double_t HggBernstein::analyticalIntegral(Int_t code, const char* rangeName) const 
+{
+  assert(code==1) ;
+  Double_t xmin = _x.min(rangeName); Double_t xmax = _x.max(rangeName);
+  Double_t umin = (xmin - _xMin)/(_xMax - _xMin);
+  Double_t umax = (xmax - _xMin)/(_xMax - _xMin);
+  Int_t degree= _coefList.getSize()-1; // n+1 polys of degree n
+  Double_t norm(0) ;
+
+  // for each of the i Bernstein basis polynomials
+  // represent it in the 'power basis' (the naive polynomial basis)
+  // where the integral is straight forward.
+  for (int j = 0; j <= degree; ++j){ // power basis
+    Double_t sum = 0;
+    for (int i = 0; i <= j; ++i) sum += ((j-i) % 2 ? -1 : 1)*TMath::Binomial(j,i)*((RooAbsReal*)_coefList.at(i))->getVal();
+    sum *= TMath::Binomial(degree, j);
+    sum *= (TMath::Power(umax, j+1) - TMath::Power(umin, j+1))/(j+1);
+    norm += sum;
+  }
+  norm *= (_xMax - _xMin);
+  return norm;
+}
